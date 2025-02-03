@@ -1,0 +1,717 @@
+---
+title: Introducing sdmTMB
+subtitle: Aqua skill-sharing sessions
+from: markdown+emoji
+format: 
+  revealjs:
+    transition: fade
+    transition-speed: fast
+    #slide-number: c/t
+    #width: 1600*0.8
+    #height: 900*0.8
+    logo: "slu_logo.png"
+    css: "logo.css"
+    theme: [default, clean.scss]
+    embed-resources: true
+    pointer:
+      pointerSize: 22
+      color: #c42104
+revealjs-plugins:
+  - pointer
+author: 
+  name: Max Lindmark, Agnes Olin, Astrid Carlsen
+date: last-modified
+---
+
+## 
+
+![](figures/sdmTMB.png){fig-align="center" height=55%}
+
+::: notes
+sdm = species dist
+
+tmb = uses automatic differentiation in C++ to calculate how the likelihood changes with parameters, and then you plug that into R for optimization. This is much faster than STAN/MCMC and with more flexibility than INLA. sdmTMB does that for you, no need to know C++ code-
+::: 
+
+## Why is this so great?
+
+- Spatial and spatiotemporal random effects for modelling spatially-structured latent variables
+- All standard families including Tweedie, student, delta/hurdle models
+- Option to sample with Stan for Bayesian inference
+- Easily determine fit and convergence with diagnostic and residuals
+- Built-in index standardization
+- Extremely active and helpful developers
+
+## Why is this so great?
+
+- Tons of model specifications available
+
+![](figures/gump.jpg){fig-align="center" height=50%}
+
+::: notes
+Before I go ahead and illustrate with some examples, I want to present a very scientific comparison in how common options for writing compare across a few categories
+:::
+
+## Today's session
+
+- Super brief intro to the approach
+- 3 case studies
+
+## Why spatial models?
+
+- Spatial autocorreltion: correlation depends on distance.
+  - No concern!
+- _Residual_ spatial autocorreltion: Big concern!
+- Violates statistical assumptions
+- Inference doesn't have to be affected by RSA, but they can be so we need to adress this
+
+::: footer
+
+[spatial-autocorrelation-in-statistical-models-friend-or-foe](https://theoreticalecology.wordpress.com/2012/05/12/spatial-autocorrelation-in-statistical-models-friend-or-foe/)
+
+
+Kühn & Dormann (2012). Journal of Biogeography <https://doi.org/10.1111/j.1365-2699.2012.02707.x>
+:::
+
+::: notes
+1. could be response of covariate, doesn't matter.
+2. is autocorrelation in the difference between model predictions and data.
+
+"Spatial models" is a bad term, but here we have already zoomed in on GLMs so it's within that context.
+:::
+
+## Why spatial models?
+
+- Spatial autocorrelation emerges in ecological data because of drivers acting on large spatial scales
+- Include the covariates you believe generate the patters, including proxys
+- Look at a plot of residuals in space, still a problem?
+  - (very likely yes) 
+
+::: notes
+Spatial autocorrelation occurs frequently in ecological data, the underlying reason being that many drivers of ecological patterns such as climate or soil act at large spatial scales, making spatially close datapoints more similar than distant ones. Thus, SA arises in a perfectly natural way from environmental or ecological processes that act above the sampling scale. 
+:::
+
+## Gaussian Random Fields (GRFs)
+
+- You can include a smooth surface to model the residuals patterns, e.g., with `s()`
+- GRFs are nice because they are efficient and provide interesting information
+- A way of estimating a wiggly surface that represents unmeasured variables
+
+::: notes
+the residuals will be patchy and such, you can use like a linear thing
+:::
+
+## Gaussian Markov Random Fields (GRMFs) & the SPDE approach
+
+- GRFs are computationally demanding
+- Instead represent the spatial field as a solution to a partial differential equation (SPDE)
+- Solving this SPDE requires triangulation of the domain
+- This results in a Gaussian Markov Random field (GMRF)
+
+::: notes
+Instead of specifying the covariance matrix, which is dense, the SPDE approach uses sparce matrices (mostly 0), because they work with correlations on neighbouring cells. Basically, what is the function that gives rise to the spatial process
+
+A solution to a specific SPDE allows computing a precision matrix of a Gaussian Markov random field (GMRF) that is a good approximation to a Gaussian random field with
+Matérn covariance.
+:::
+
+## Matérn
+![](figures/matern.png){fig-align="center"}
+
+::: footer
+Matérn is named after Bertil Matérn, a statistican born in Gothenburg and active at Skogsstyrelsen, which became part of SLU in 1977!
+
+Miller, Glennie, & Seaton (2020). Journal of Agricultural, Biological and Environmental Statistics
+:::
+
+::: notes
+Basically, the Matérn is the link between the SPDE which uses the sparse structure, and the covariance
+:::
+
+## Meshes
+- The SPDE method involves a triangulation of the domain (mesh)
+- You need to construct this mesh, e.g., using `fmesher::fm mesh 2d()`
+
+::: notes
+mesh is used to converts continuous spatial domain to discrete elements
+triangulation is needed for the Finite Element Method (FEM) Implementation
+:::
+
+::: footer
+Lindgren, Rue, & Lindström (2011). Journal of the Royal Statistical Society: Series B (Statistical Methodology)
+
+Miller, Glennie, & Seaton (2020). Journal of Agricultural, Biological and Environmental Statistics
+:::
+
+## Meshes
+
+## Case study 1: Marine litter trends
+
+```{r}
+#| echo: false
+#| fig.width: 9.5   # Wider plot (default is often 7)
+#| fig.height: 7.5   # Taller plot (default is often 5)
+#| fig-align: "center"
+
+library(tidyverse)
+library(patchwork)
+library(tidylog)
+library(sdmTMB)
+library(viridis)
+library(RColorBrewer)
+library(ggtext)
+library(ggspatial)
+library(ggsidekick)
+library(devtools)
+theme_set(theme_sleek())
+
+home <- here::here()
+
+source_url("https://raw.githubusercontent.com/maxlindmark/uwtv/refs/heads/main/R/functions/map-plot.R")
+
+d1 <- readRDS(paste0(home, "/data/ibts_points_in_uv_kust_polygon.rds")) # ibts
+d2 <- readRDS(paste0(home, "/data/kust_points_in_uv_polygon_4326.rds")) # kust i UW
+d3 <- readRDS(paste0(home, "/data/kust_points_outside_uv_polygon_4326.rds")) # kust utanför UW
+
+d <- bind_rows(d1 |> mutate(Survey = "IBTS"),
+               d2 |> mutate(Survey = "CTS", Quarter = 3),
+               d3 |> mutate(Survey = "CTS", Quarter = 3)) |> 
+  add_utm_columns(ll_names = c("long_stop_dec", "lat_stop_dec")) |> 
+  st_drop_geometry() |> 
+  mutate(haul_id = paste(Year, Quarter, X, Y, Survey, sep = "_"),
+         haul_id = as.factor(haul_id)) |> 
+  ungroup()
+
+# Summarise by haul
+catch <- d |> 
+  summarise(no_km2 = sum(no_litter_per_km2), .by = haul_id)
+
+catch <- catch |> 
+  left_join(d |>
+              distinct(haul_id, .keep_all = TRUE) |> 
+              dplyr::select(X, Y, lat_stop_dec, long_stop_dec, haul_id) |> 
+              rename(lat = lat_stop_dec,
+                     lon = long_stop_dec),
+            by = "haul_id") |> 
+  separate(haul_id, sep = "_", into = c("year", "quarter", "X", "Y", "survey"), remove = FALSE) |> 
+  mutate(survey = as.factor(survey),
+         year_f = as.factor(year),
+         year = as.integer(year),
+         X = as.integer(X),
+         Y = as.integer(Y))
+
+# Read prediction grid
+pred_grid <- read_csv(paste0(home, "/data/pred_grid.csv")) |> 
+  mutate(year = as.integer(year),
+         year_f = as.factor(year),
+         survey = "IBTS")
+
+d4 <- read_csv(paste0(home, "/data/Megafauna_stn_litter.csv")) |>
+  rename(lon = Lon,
+         lat = Lat) |>
+  add_utm_columns(ll_names = c("lon", "lat")) |>
+  mutate(survey = "UWTV",
+         year = 2024)
+
+pd <- bind_rows(catch, d4)
+
+skag_kat_border <- data.frame(lat1 = 57.75420, 
+                              lat2 = 57.91694673025835,
+                              lon1 = 10.61630,
+                              lon2 = 11.502651981474733) 
+
+skag_kat_border <- skag_kat_border |> 
+  add_utm_columns(utm_names = c("X1", "Y1"),
+                  ll_names = c("lon1", "lat1")) |> 
+  add_utm_columns(utm_names = c("X2", "Y2"),
+                  ll_names = c("lon2", "lat2"))
+
+
+ann_text <- data.frame(year = 2012, 
+                       label = c("Skagerrak", "Kattegat"),
+                       lon = c(10.75, 11.2),
+                       lat = c(58.2, 57.5)) |> 
+  add_utm_columns(ll_names = c("lon", "lat"))
+
+plot_map + 
+  geom_sf(fill = "grey97", color = "grey70") + 
+  geom_segment(data = skag_kat_border, aes(x = X1*1000, xend = X2*1000,
+                                           y = Y1*1000, yend = Y2*1000),
+               alpha = 0.75, linetype = 3) + 
+  geom_point(data = pd,
+             aes(X*1000, Y*1000, color = survey), size = 0.8) +
+  geom_text(data = ann_text, aes(x = X*1000, y = Y*1000, label = label),
+            color = "gray50", size = 2.7) +
+  facet_wrap(~year, ncol = 5) + 
+  theme(legend.position.inside = c(0.81, 0.14),
+        legend.direction = "vertical") + 
+  scale_color_brewer(palette = "Dark2", name = "Survey") +
+  guides(color = guide_legend(position = "inside", 
+                              override.aes = list(size = 2)))
+```
+
+## Case study 1: Marine litter trends
+
+- Geostatistical data: observations from a spatial processes at specific points
+- Response variable is a density (no/m<sup>2</sup>) that contains lots of zeroes
+- Lets start with a GLM
+
+## Construct a mesh
+
+```{r}
+#| echo: true
+mesh <- make_mesh(catch, xy_cols = c("X", "Y"), cutoff = 3)
+```
+
+::: notes
+More triangles = more computation time
+
+More triangles = more fine-scale spatial predictions
+
+Finer resolution isn't always better
+
+Borders with coarser resolution reduce number of triangles
+
+Use cutoff (minimum edge length) to avoid too fine meshes
+
+Triangle edge size needs to be smaller than spatial range
+:::
+
+```{r}
+#| echo: false
+#| eval: true
+
+ggplot() +
+  inlabru::gg(mesh$mesh) +
+  coord_fixed() +
+  geom_point(aes(X, Y), data = catch, alpha = 0.2, size = 0.5) +
+  annotate("text", -Inf, Inf, label = paste("n knots = ", mesh$mesh$n), hjust = -0.1, vjust = 2) +
+  labs(x = "Easting (km)", y = "Northing (km)")
+```
+
+## Fit a non-spatial model
+
+```{r}
+#| echo: true
+#| eval: true
+#| output: true
+
+fit1 <- sdmTMB(no_km2 ~ year_f + survey,
+               data = catch,
+               family = delta_gamma(type = "poisson-link"),
+               spatiotemporal = "off",
+               spatial = "off",
+               time = "year")
+
+s <- sanity(fit1)
+s
+```
+
+## Check residuals
+
+```{r}
+#| echo: true
+#| fig.width: 3.5   # Wider plot (default is often 7)
+#| fig.height: 3.5   # Taller plot (default is often 5)
+#| fig-align: "center"
+
+res <- simulate(fit1, nsim = 1000, type = "mle-mvn") |>
+  dharma_residuals(fit1, plot = FALSE)
+
+ggplot(res, aes(observed, expected)) +
+  geom_point(color = "grey30", shape = 21, size = 0.5) +
+  geom_abline(col = "tomato3", linewidth = 0.6) +
+  theme(aspect.ratio = 1) +
+  labs(x = "Observed", y = "Expected")
+```
+
+## Fit a spatiotemporal and compare residuals
+
+```{r}
+#| echo: false
+#| cache: true
+#| eval: true
+
+# Fit spatiotemporal model
+fit2 <- sdmTMB(no_km2 ~ year_f + survey,
+               data = catch,
+               mesh = mesh,
+               anisotropy = TRUE,
+               family = delta_gamma(type = "poisson-link"),
+               spatiotemporal = "ar1",
+               spatial = "off",
+               time = "year")
+
+catch$`Non spatial` <- residuals(fit1, model = 1)
+catch$`Spatiotemporal` <- residuals(fit2, model = 1)
+```
+
+```{r}
+#| echo: false
+#| cache: true
+#| fig.width: 7.5
+#| fig.height: 5.5
+#| fig-align: "center"
+
+catch |> 
+  pivot_longer(c(Spatiotemporal, `Non spatial`),
+               values_to = "Residuals", names_to = "Model") |> 
+  drop_na(Residuals) |> 
+  ggplot() +
+  geom_jitter(aes(X, Y, fill = Residuals), stroke = 0.2, width = 8, height = 8, 
+              shape = 21, color = "grey30", size = 2.1, alpha = 0.85) + 
+  facet_wrap(~Model) + 
+  scale_fill_gradient2()
+```
+
+## Extract coefficicents
+
+```{r}
+#| echo: true
+tidy(fit2)
+```
+
+## Extract coefficicents
+
+```{r}
+#| echo: true
+tidy(fit2, effects = "ran_pars", model = 1)
+tidy(fit2, effects = "ran_pars", model = 2)
+```
+
+## Plot spatiotemporal random effects
+
+- First we need to create a spatial grid to predict on...
+
+## Plot spatiotemporal random effects
+
+```{r}
+p <- predict(fit2, newdata = pred_grid)
+
+p1 <- plot_map + 
+  geom_raster(data = p |> filter(year %in% c(2015, 2016, 2017, 2018)),
+              aes(X*1000, Y*1000, fill = exp(epsilon_st1))) + 
+  geom_sf(fill = "grey97", color = "grey70") + 
+  facet_wrap(~year, ncol = 4) + 
+  scale_fill_gradient2(midpoint = 1, name = "Spatiotemporal\nrandom effect\n(binomial model)") + 
+  guides(fill = guide_colorbar(title.position = "top")) +
+  theme(legend.position = "right",
+        legend.direction = "vertical",
+        legend.key.width = unit(0.4, "cm"),
+        axis.text.x = element_blank(),
+        axis.title.x = element_blank())
+  
+p2 <- plot_map + 
+  geom_raster(data = p |> filter(year %in% c(2015, 2016, 2017, 2018)),
+              aes(X*1000, Y*1000, fill = exp(epsilon_st2))) + 
+  geom_sf(fill = "grey97", color = "grey70") + 
+  facet_wrap(~year, ncol = 4) + 
+  guides(fill = guide_colorbar(title.position = "top")) +
+  scale_fill_gradient2(midpoint = 1, name = "Spatiotemporal\nrandom effect\n(Gamma model)") +
+  theme(legend.position = "right",
+        legend.key.width = unit(0.4, "cm"),
+        legend.direction = "vertical")
+```
+
+```{r}
+#| echo: false
+#| #| fig.width: 3.5 # Wider plot (default is often 7)
+
+(p1 / p2)
+```
+
+## Check anisotropy
+
+```{r}
+plot_anisotropy(fit2)
+```
+
+## Case study 2: Cod diet data
+
+- Response variable is relative prey weight (g/g) that contains lots of zeroes
+- Long data (1 row = 1 observation of a prey group)
+- "Multispecies" model
+
+## Case study 2: Cod diet data
+
+```{r}
+#| echo: false
+
+library(wesanderson)
+
+devtools::source_url("https://raw.githubusercontent.com/maxlindmark/pred-prey-overlap/main/R/functions/map-plot.R")
+
+plot_map <- plot_map + 
+  geom_sf(size = 0.3)
+
+pal <- wes_palette(5, name = "Darjeeling1") # str(pal)
+pal <- c("black", "#FF0000", "#00A08A", "#F98400", "#5BBCD6")
+
+d <- read_csv(paste0(home, "/data/clean/stomachs.csv")) |>
+  mutate(
+    year_f = as.factor(year),
+    month_f = as.factor(month)
+  ) |>
+  filter(quarter %in% c(1, 4)) |>
+  mutate(across(
+    .cols = c("oxy", "temp", "depth", "salinity", "pred_length"),
+    .fns = scale,
+    .names = "{.col}_sc"
+  )) |>
+  # Instead of filtering high rpw, I assign them the max
+  mutate(rpw = ifelse(rpw > 0.5, 0.5, rpw)) |>
+  mutate(rpw_2 = rpw^(1 / 2)) |>
+  mutate(
+    prey_group = as.factor(prey_group),
+    year_ct = year - 2000
+  ) |>
+  filter(!prey_group == "Other")
+
+pred_grid <-
+  bind_rows(
+    read_csv(paste0(home, "/data/clean/pred_grid_(1_2).csv")),
+    read_csv(paste0(home, "/data/clean/pred_grid_(2_2).csv"))
+  ) |>
+  filter(year >= 1995 & year <= 2023) |>
+  filter(quarter == 4) |> # Not needed in theory for saduria...
+  mutate(
+    year_ct = year - 2000,
+    year_f = as.factor(year),
+    oxy_sc = (oxy - mean(d$oxy)) / sd(d$oxy),
+    temp_sc = (temp - mean(d$temp)) / sd(d$temp),
+    depth_sc = (depth - mean(d$depth)) / sd(d$depth),
+    salinity_sc = (salinity - mean(d$salinity)) / sd(d$salinity),
+    pred_length_sc = 0
+  )
+
+d_haul <- d |>
+  summarise(n = length(unique(pred_id)), .by = c(X, Y, year, haul_id))
+
+p1 <- plot_map +
+  geom_point(
+    data = d_haul, aes(X * 1000, Y * 1000, color = year, size = n),
+    alpha = 0.5
+  ) +
+  scale_size(range = c(0.1, 4)) +
+  theme(legend.position = "bottom") +
+  labs(color = "Year") +
+  scale_color_viridis(option = "A") +
+  theme(
+    legend.key.width = unit(0.9, "cm"),
+    legend.box = "vertical"
+  ) +
+  geom_sf(color = "gray80") 
+
+d_country <- d |>
+  summarise(n = length(unique(pred_id)), .by = c(X, Y, year, haul_id, Country))
+
+p2 <- plot_map +
+  geom_point(
+    data = d_country, aes(X * 1000, Y * 1000, color = Country),
+    alpha = 0.5, size = 0.7
+  ) +
+  guides(colour = guide_legend(
+    title.position = "top", title.hjust = 0.5,
+    override.aes = list(size = 2, alpha = 1)
+  )) +
+  scale_color_manual(values = pal[-1]) +
+  geom_sf(color = "gray80") 
+
+(p1 + p2) & theme(legend.position = "bottom")
+```
+
+## Construct a mesh
+
+```{r}
+#| echo: false
+#| cache: true
+
+mesh <- make_mesh(d, c("X", "Y"), cutoff = 10)
+
+ggplot() +
+  inlabru::gg(mesh$mesh) +
+  coord_fixed() +
+  geom_point(aes(X, Y), data = d, alpha = 0.2, size = 0.5) +
+  annotate("text", -Inf, Inf, label = paste("n knots = ", mesh$mesh$n), hjust = -0.3, vjust = 3) +
+  labs(x = "Easting (km)", y = "Northing (km)")
+
+
+missing_years <- base::setdiff(
+    min(d$year):max(d$year),
+    unique(d$year)
+  )
+
+# Note, I could do TW instead of smooth year, might highlight the differences more. But complicated to make it work with SVC and predator length.
+m <- sdmTMB(
+  rpw_2 ~ 0 + prey_group * pred_length_sc + s(year_ct, by = prey_group) + oxy_sc + temp_sc + depth_sc + salinity_sc,
+  data = d,
+  mesh = mesh,
+  time = "year",
+  extra_time = missing_years,
+  spatial = "off",
+  spatiotemporal = "off",
+  family = tweedie()
+  )
+
+m2 <- sdmTMB(
+  rpw_2 ~ 0 + prey_group * pred_length_sc + s(year_ct, by = prey_group) + oxy_sc + temp_sc + depth_sc + salinity_sc,
+  data = d,
+  mesh = mesh,
+  time = "year",
+  extra_time = missing_years,
+  spatial = "off",
+  spatiotemporal = "iid",
+  spatial_varying = ~ 0 + prey_group,
+  family = tweedie()
+  )
+
+d$res <- residuals(m)
+d$res2 <- residuals(m2)
+```
+
+## The model
+
+```{r}
+#| echo: true
+#| eval: false
+
+m2 <- sdmTMB(
+  rpw_2 ~ 0 + prey_group * pred_length_sc + s(year_ct, by = prey_group) +
+    oxy_sc + temp_sc + depth_sc + salinity_sc,
+  data = d,
+  mesh = mesh,
+  time = "year",
+  extra_time = missing_years,
+  spatial = "off",
+  spatiotemporal = "iid",
+  spatial_varying = ~ 0 + prey_group,
+  family = tweedie()
+  )
+```
+
+## Plot residuals and compare with non spatial model
+
+```{r}
+#| echo: false
+d |> 
+  summarise(`Non spatial` = mean(res),
+            `Spatiotemporal` = mean(res2),
+            .by = c(X, Y)) |> 
+  pivot_longer(c(`Non spatial`, `Spatiotemporal`)) |> 
+  filter(Y < 6175) |> 
+  ggplot(aes(X, Y, value)) + 
+  facet_wrap(~name) + 
+  geom_jitter(aes(X, Y, fill = value), shape = 21, size = 3.2, color = "gray30", width = 10, height = 10) + 
+  scale_fill_gradient2()
+```
+
+## Spatial predictions 
+
+```{r}
+#| echo: false
+#| eval: true
+#| cache: true
+pred_grid2 <- replicate_df(pred_grid,
+                           "prey_group",
+                           unique(d$prey_group))
+
+p <- predict(m2, newdata = pred_grid2)
+```
+
+```{r}
+#| echo: false
+
+pp <- p |> 
+  mutate(est2 = exp(est)) |> 
+  summarise(est2 = mean(est2), .by = c(prey_group, X, Y)) |> 
+  filter(est2 < 0.5) |> 
+  mutate(est2 = est2/max(est2), .by = prey_group)
+
+plot_map +
+  geom_raster(
+    data = pp,
+    aes(X * 1000, Y * 1000, fill = est2)) +
+  facet_wrap(~prey_group) + 
+  scale_fill_viridis(trans = "sqrt", name = "Scaled relative\nprey weight") +
+  geom_sf(color = "gray80") 
+```
+
+## Calculate a relative "index of abundance"
+
+```{r}
+#| cache: true
+#| echo: true
+# Calculate indices
+
+inds <- list()
+
+for (i in unique(d$prey_group)) {
+
+  pred_grid$prey_group <- as.factor(i)
+  p <- predict(m2, newdata = pred_grid, return_tmb_object = TRUE)
+  t <- get_index(p, area = 1 / nrow(pred_grid |> filter(year == 2000)))
+  inds[[i]] <- t |>
+    mutate(
+      prey_group = i
+    )
+  }
+
+ind <- bind_rows(inds)
+```
+
+## Plot indices
+
+```{r}
+#| echo: false
+#| eval: true
+
+# Comparing scenarios by prey group
+ggplot(ind, aes(year, est, fill = prey_group, color = prey_group)) +
+  geom_ribbon(aes(ymin = lwr, ymax = upr),
+    alpha = 0.1, color = NA
+  ) +
+  geom_line() +
+  scale_color_manual(values = pal) +
+  scale_fill_manual(values = pal) +
+  guides(
+    fill = "none",
+    color = guide_legend(
+      position = "inside",
+      nrow = 2,
+      title.position = "top",
+      title.hjust = 0.5
+    )
+  ) +
+  labs(
+    y = "Relative prey weight",
+    x = "Year",
+    color = "Scenario"
+  ) +
+  facet_wrap(~prey_group, scales = "free", ncol = 3) +
+  theme(
+    legend.position.inside = c(0.85, 0.15),
+    legend.direction = "horizontal"
+  ) +
+  NULL
+```
+
+
+::: notes
+these are residuals for the first model!
+:::
+
+## 
+![](figures/book.png){fig-align="center" width=%}
+
+## Further watching
+
+::: {.columns style="display: flex; justify-content: center; margin-top: 4em;"}
+::: {.column width="50%" style="display: flex; justify-content: center;"}
+{{< video https://youtu.be/DIXa7ngVVL0 width="500" height="400" >}}
+:::
+::: {.column width="50%" style="display: flex; justify-content: center;"}
+{{< video https://youtu.be/VxnqgiAAjfk width="500" height="400" >}}
+:::
+:::
+
+

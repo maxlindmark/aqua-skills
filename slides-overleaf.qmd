@@ -1,0 +1,141 @@
+---
+title: Aqua skill-sharing sessions
+subtitle: Overleaf
+from: markdown+emoji
+format: 
+  revealjs:
+    transition: fade
+    transition-speed: fast
+    #slide-number: c/t
+    #width: 1600*0.8
+    #height: 900*0.8
+    logo: "slu_logo.png"
+    css: "logo.css"
+    theme: [default, clean.scss]
+    embed-resources: true
+    pointer:
+      pointerSize: 22
+      color: #c42104
+revealjs-plugins:
+  - pointer
+author: 
+  name: Max Lindmark
+date: last-modified
+---
+
+## 
+![](figures/overleaf.png){height="200"}
+
+- Cloud-based LaTeX editor used for writing, editing and publishing scientific documents
+
+## Why another tool?
+
+-   Quick comparison (Word, Overleaf, Google docs, Quarto/Markdown):
+    -   Collaborative writing
+    -   Equations
+    -   GitHub integration / Version control
+    -   Free
+    -   Track changes
+    -   Ease of use
+
+::: notes
+Before I go ahead and illustrate with some examples, I want to present a very scientific comparison in how common options for writing compare across a few categories
+:::
+
+## Collaborative writing
+
+| Word                               | Overleaf           | Google docs        | Quarto/Markdown |
+|------------------|------------------|------------------|------------------|
+| ![](figures/cry.jpg){height="200"} | :white_check_mark: | :white_check_mark: | :x:             |
+
+::: notes
+I don't think I need to explain how messy word is when it comes to collaborative writing, and most of this extra burden is put on the lead author. You risk getting multiple versions (and people don't read each others versions). This is why something like a live cloud based editor is often preffered. You can of course have a word document in e.g., sharepoint, but honestly its clunky and buggy, in my opinion. QUARTO/MARKDOWN
+:::
+
+## Equations
+
+| Word               | Overleaf                                    | Google docs                                          | Quarto/Markdown                             |
+|------------------|------------------|-------------------|------------------|
+| :ballot_box_with_check: | ![](figures/satisfaction.jpg){height="200"} | ![](figures/bike-fall.jpg){height="250" width="250"} | ![](figures/satisfaction.jpg){height="200"} |
+
+::: notes
+No ambiguity here when it comes to the equation, because you can check the code that made it.
+
+You can do it in word, but i's much nicer with Latex
+:::
+
+## GitHub integration / Version control
+
+| Word                               | Overleaf           | Google docs        | Quarto/Markdown |
+|------------------|------------------|------------------|------------------|
+| ![](figures/cry.jpg){height="200"} | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+
+::: notes
+See the collaboration slides. Word typically relies on V1.... V1_initials... V2.... That can work of course...
+:::
+
+## Free
+
+| Word | Overleaf | Google docs | Quarto/Markdown    |
+|------|----------|-------------|--------------------|
+| :x:  | :x:      | :white_check_mark: | :white_check_mark: |
+
+::: notes
+Overleaf unfortuntaly is very limited in the free version. But so is word.
+:::
+
+## Track changes
+
+| Word               | Overleaf                              | Google docs        | Quarto/Markdown              |
+|-----------------|------------------------------------------|-----------------|----------------------------|
+| :white_check_mark: | :ballot_box_with_check: (with pay version) | :white_check_mark: | :ballot_box_with_check: (via Git) |
+
+::: notes
+Only with pay version. With Quarto, it really comes down to how familar your team is with git
+:::
+
+## Ease of use
+
+| Word               | Overleaf           | Google docs        | Quarto/Markdown |
+|------------------|-------------------|------------------|------------------|
+| :white_check_mark: | :ballot_box_with_check: | :white_check_mark: | :x:             |
+
+## Summary
+
+| Criteria                             | Word               | Overleaf           | Google docs        | Quarto/Markdown |
+|--------------------------------------|---------|---------|---------|---------|
+| Collaborative writing                | :x:                     | :white_check_mark:      | :white_check_mark: | :x:                     |
+| Equations                            | :ballot_box_with_check: | :white_check_mark:      | :x:                | :white_check_mark:      |
+| GitHub integration / Version control | :x:                     | :white_check_mark:      | :x:                | :white_check_mark:      |
+| Free                                 | :x:                     | :x:                     | :white_check_mark: | :white_check_mark:      |
+| Track changes                        | :white_check_mark:      | :ballot_box_with_check: | :white_check_mark: | :ballot_box_with_check: |
+| Ease of use                          | :white_check_mark:      | :ballot_box_with_check: | :white_check_mark: | :x:                     |
+
+::: notes
+Only one X for over
+:::
+
+## 
+::: notes
+- Walkthrough layot
+  - My projects
+  - New project (with template)
+  - Left hand side: files, middle: latex cod, right: rendered pdf
+  - Download file, download project
+  - Inline equation, new equation
+  - italic, bold
+  
+- Make new template project
+- Sharing (see also download pdf and open in word)
+- Commenting
+- Download 
+
+- My workflow
+- Template
+- Figures
+- Citations with Zotero 
+- Show example
+- Invite someone?
+:::
+
+

@@ -4,16 +4,19 @@
 // Custom colours and variables
 //$jet: #131516;
 $jet: #414141;
-$accent: #205285;//#107895;
-$accent2: #9a2515;
+$accent: #414141;//#107895;
+$accent2: #414141;
 $right-arrow: "\2192"; // Unicode character for right arrow
 
 // fonts
-@import url(https://fonts.googleapis.com/css?family=Roboto:200,200i,300,300i,350,350i,400,400i);
+//@import url(https://fonts.googleapis.com/css?family=Roboto:200,200i,300,300i,350,350i,400,400i);
+@import url(https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&display=swap);
 $font-family-sans-serif: "Roboto", sans-serif !default;
+//$font-family-sans-serif: "Lato", sans-serif !default;
 $presentation-font-size-root: 36px;
 
-$presentation-heading-font: "Roboto", sans-serif !default;
+//$presentation-heading-font: "Roboto", sans-serif !default;
+//$presentation-heading-font: "Lato", sans-serif !default;
 $presentation-heading-color: $jet !default;
 $presentation-heading-font-weight: 200;
 //$presentation-heading-line-height: 2;
@@ -22,11 +25,23 @@ $presentation-heading-font-weight: 200;
 // colors
 //$body-bg: #f0f1eb !default;
 $body-color: $jet !default;
-$link-color: $accent !default;
-$selection-bg: #205285 !default;
+$link-color: #4169E1;
+$selection-bg: #36454F !default;
 
 
 /*-- scss:rules --*/
+.reveal .slide-logo {
+  display: block;
+  position: fixed;
+  top: unset !important;
+  left: unset !important;
+  top: 5px;
+  left: 12px;
+  height: 65px !important;
+  width: 65x !important;
+  max-width: unset !important;
+  max-height: unset !important;
+}
 
 .reveal a {
   line-height: 1.5em;
@@ -43,13 +58,13 @@ $selection-bg: #205285 !default;
   text-align: left;
 
   .title {
-    color: $body-color;
+    color: #131313;
     font-size: 1.4em;
-    font-weight: 350;
+    font-weight: 550;
   }
 
   .subtitle {
-    //color: $accent;
+    color: #131313;
     font-size: 80%;
     //font-style: italic;
     margin-top: 0em;
@@ -60,7 +75,7 @@ $selection-bg: #205285 !default;
   .quarto-title-author-email {
     font-style: italic;
     // font-size: 80%;
-    // color: #7F7F7F;
+    color: #414141;
   }
 
   .author,
@@ -81,6 +96,11 @@ $selection-bg: #205285 !default;
 
 }
 
+.reveal h1 {
+  color: #eeeee4;
+  font-weight: 350;
+  font-size: 1.4em;
+}
 
 .reveal h2 {
   font-weight: 350;
@@ -236,4 +256,8 @@ $selection-bg: #205285 !default;
   width: auto;
   height: auto;
   object-fit: contain;
+}
+
+.footer {
+  font-size: 0.7em !important;
 }
