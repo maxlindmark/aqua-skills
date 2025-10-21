@@ -1,0 +1,515 @@
+---
+title: A model-based biomass index of greater weever
+subtitle: Aqua skill-sharing sessions
+from: markdown+emoji
+format: 
+  revealjs:
+    transition: fade
+    transition-speed: fast
+    #slide-number: c/t
+    #width: 1600*0.8
+    #height: 900*0.8
+    logo: "slu_logo.png"
+    css: "logo.css"
+    theme: [default, clean.scss]
+    embed-resources: true
+    pointer:
+      pointerSize: 22
+      color: #c42104
+revealjs-plugins:
+  - pointer
+author: 
+  name: Max Lindmark
+date: last-modified
+---
+
+## Greater weever
+
+- Widely distributed in the North-East Atlantic
+  - In Sweden: Skagerrak, Kattegatt och Öresund
+- No quota
+- Mostly caught as bycatch in industrial pelagic fisheries
+- Landings fluctuate across years; high when targeted
+- High age & catchability, and slow growth make it susceptible to overfishing.
+
+![](figures/weever.png){fig-align="center" height=150px}
+
+::: footer
+Illustration: Karl Jilg, SLU Artdatabanken
+:::
+
+::: notes
+Norway to Morocco, Madeira and Canary Islands, including the Mediterranean and the Black Sea.
+:::
+
+## Fiskbarometern
+
+- The status of greater weever in Fiskbarometern is largely based on an index of biomass
+- Two types of indices: design or model based
+
+## Indices from fishery-independent surveys
+
+:::: {.columns}
+
+::: {.column width="50%"}
+**Design-based**
+
+- Rely on the randomness of the sampling locations 
+- Estimates the (fixed) index value as the area-weighted stratified mean for each stratum
+- Limited ability to account for environmental covariates or spatial structure
+
+:::
+
+::: {.column width="50%"}
+**Model-based**
+
+- An underlying stochastic process generating the data, described by a statistical model
+- Incorporate covariates and spatial correlations
+- Predictions at unsampled locations
+:::
+
+::::
+
+::: footer
+Cao et al (2015) CJFAS
+:::
+
+## Spatiotemporal model for index standardisation
+
+- Spatial autocorrelation: correlation depends on distance: No concern!
+- _Residual_ spatial autocorrelation: Big concern! Violates statistical assumptions
+- Inference doesn't have to be affected by RSA, but they can be so we need to address this
+
+::: notes
+Spatial autocorrelation emerges in ecological data because of drivers acting on large spatial scales
+
+Spatial autocorrelation occurs frequently in ecological data, the underlying reason being that many drivers of ecological patterns such as climate or soil act at large spatial scales, making spatially close datapoints more similar than distant ones. Thus, SA arises in a perfectly natural way from environmental or ecological processes that act above the sampling scale. 
+:::
+
+
+## Spatiotemporal model for index standardisation
+
+- sdmTMB: TMB and R for fitting and fmesher for setting up SPDE (stochastic partial differential equation) matrices
+- Allows us to model spatially correlated latent processes as GMRFs
+- See previous session on sdmTMB for more background!
+
+::: notes
+As opposed to gams..
+
+Solving this SPDE requires triangulation of the domain, a mesh.
+
+A solution to a specific SPDE allows computing a precision matrix of a Gaussian Markov random field (GMRF) that is a good approximation to a Gaussian random field with Matérn covariance.
+:::
+
+::: footer
+Anderson et al., (2025) *bioRxiv*
+:::
+
+## Spatiotemporal GLMs
+
+```{=html}
+<!--
+Todo: 
+0) hex colors: https://www.google.com/search?client=firefox-b-d&q=find+hex+of+color#cobssid=s
+https://waldyrious.net/viridis-palette-generator/
+1) can I plot pdfs? 
+2) can i specify the path to the figure folder?
+3) how can i make the rendered pdfs look nicer...
+4) center align figure in yaml?
+-->
+```
+::: {style="font-size:35px"}
+$$
+\begin{aligned}
+\mathbb{E}[y_{\boldsymbol{s},t}] &= \mu_{\boldsymbol{s},t},\\
+\mu_{\boldsymbol{s},t} &=
+f^{-1} \left( \boldsymbol{X}^{\mathrm{main}}_{\boldsymbol{s},t} \boldsymbol{\beta} +
+\boldsymbol{X}^{\mathrm{svc}}_{\boldsymbol{s},t} \zeta_{\boldsymbol{s}} + \boldsymbol{X}^{\mathrm{tvc}}_{\boldsymbol{s},t} \gamma_{\boldsymbol{t}}
+ + \epsilon_{\boldsymbol{s},t} \right)
+\end{aligned}
+$$
+
+::: {style="font-size:25px"}
+-   $y_{\boldsymbol{s},t}$: density \[$\text{kg/km}^2$\] at point $\boldsymbol{s}$ and time $t$
+
+-   $\mu$: mean
+
+-   $f$: link function
+
+-   $\boldsymbol{X}^{\mathrm{main}}$, $\boldsymbol{X}^{\mathrm{svc}}$, and $\boldsymbol{X}^{\mathrm{tvc}}$: design matrices ('main' = main effects, 'svc' = spatially-varying coefficients, and 'tvc' = time-varying coefficients)
+
+-   $\boldsymbol{\beta}$: vector of fixed-effect coefficients
+
+-   $\zeta_{\boldsymbol{s}}$: spatially varying coefficients (a random field for each quarter), $\zeta_{\boldsymbol{s}} \sim \mathrm{MVN}(\boldsymbol{0},\boldsymbol{\Sigma}_\zeta)$
+
+-   $\gamma_{\boldsymbol{t}}$: time-varying intercept (ar1), $\gamma_{\boldsymbol{t=1}} \sim \operatorname{N}(0, \sigma_\gamma^2)$, $\gamma_{\boldsymbol{t>1}} \sim \operatorname{N}(\rho_\gamma \gamma_{t-1}, \sqrt{1-\rho_\gamma^2 \sigma_\gamma^2})$
+
+-   $\epsilon_{\boldsymbol{s},t}$: spatiotemporal random field, $\epsilon_{\boldsymbol{s},t} \sim \mathrm{MVN}(\boldsymbol{0},\boldsymbol{\Sigma}_{\epsilon})$
+
+-   delta-gamma observation model
+:::
+:::
+
+::: notes
+in the long format, the prey group predictions add up to the total feeding date
+:::
+
+## It's generally a good idea to start simple...
+
+```{r}
+#| echo: false
+#| fig.width: 9.5   # Wider plot (default is often 7)
+#| fig.height: 7.5   # Taller plot (default is often 5)
+#| fig-align: "center"
+
+# Load libraries
+library(tidyverse)
+library(ggaqua)
+library(tidylog)
+library(sdmTMB)
+library(patchwork)
+library(viridis)
+library(RColorBrewer)
+library(modelr)
+library(ggtext)
+library(tictoc)
+library(ggsidekick); theme_set(theme_sleek())
+
+home <- "/Users/maxlindmark/Dropbox/Max work/R/greater-weever"#here::here()
+
+# Load all custom functions in R/function
+
+for(fun in list.files(paste0(home, "/R/functions"))){
+  source(paste(home, "R/functions", fun, sep = "/"))
+}
+
+d <- readr::read_csv(paste0(home, "/data/clean/trawl.csv")) |> 
+  filter(depth > 0) |> 
+  drop_na(temp) |> 
+  filter(quarter %in% c(1, 3)) |> 
+  mutate(temp_sc = as.numeric(scale(temp)),
+         depth = log(depth), 
+         depth_sc = as.numeric(scale(depth)),
+         depth_sq = depth_sc*depth_sc,
+         quarter_f = as.factor(quarter),
+         year_f = as.factor(year))
+
+# Read prediction grid
+pred_grid <- readr::read_csv(paste0(home, "/data/clean/pred_grid.csv")) |> 
+  drop_na(temp) |> 
+  filter(depth > 0) |> 
+  mutate(temp_sc = as.numeric(scale(temp)),
+         depth = log(depth),
+         depth_sc = (depth - mean(d$depth)) / sd(d$depth),
+         depth_sq = depth_sc*depth_sc,
+         quarter_f = as.factor(quarter),
+         year_f = as.factor(year))
+
+mesh <- make_mesh(d, 
+                  xy_cols = c("X", "Y"),
+                  cutoff = 4)
+```
+
+## data
+
+```{r}
+plot_map + 
+  geom_point(data = d,
+             aes(X*1000, Y*1000, color = as.factor(year))) + 
+  scale_color_viridis(discrete = TRUE, direction = -1) + 
+  guides(color = "none")
+```
+
+## m0
+
+```{r}
+#| echo: true
+
+m0 <- sdmTMB(
+  formula = density ~ s(depth_sc) + temp_sc + quarter_f,
+  data = d,
+  mesh = mesh,
+  family = delta_gamma(type = "poisson-link"),
+  time_varying = ~1,
+  time_varying_type = "ar1",
+  spatiotemporal = "off",
+  spatial = "off",
+  time = "year")
+```
+
+::: notes
+Non ST fields model
+
+Note that we need to put an ar1 on the intercept. Typically we model year as a factor to get independent estimates. However in this case, we are missing q3 data in year 2000. This makes the predicted value for yearf in 2000 very high, because and q1 in 2000 is one of the largest years. Allowing the year effect to evolve through time doesn't mean it estimates separate year effects for each quarter, just that it gets a memory. In theory we could go for a rw0 on time rather than ar1, because correlation is near one, but i get worse diagnostics then.
+:::
+
+## m1
+
+```{r}
+#| echo: true
+#| cache: true
+
+m1 <- sdmTMB(
+  formula = density ~ s(depth_sc) + temp_sc + quarter_f,
+  data = d,
+  mesh = mesh,
+  family = delta_gamma(type = "poisson-link"),
+  time_varying = ~1,
+  time_varying_type = "ar1",
+  spatiotemporal = list("off", "iid"),
+  spatial = "on",
+  time = "year")
+```
+
+::: notes
+iid fields on the gamma component, off for binomial. Initial exploration suggests the spatiotemporal random field for the binomial model is estimated small
+
+now we can look at the smooth terms, and see that they have larg sds
+:::
+
+## m1
+
+```{r}
+#| echo: true
+
+nd_depth <- tibble(depth = modelr::seq_range(d$depth, n = 50)) |> 
+  mutate(temp_sc = 0, 
+         depth_sc = as.numeric(scale(depth)),
+         depth_sq = depth_sc*depth_sc,
+         quarter_f = as.factor(3),
+         year = 1999,
+         year_f = as.factor(1999))
+
+p_depth <- predict(m1, newdata = nd_depth,
+                   re_form = NA, re_form_iid = NA)
+```
+
+## m1
+
+```{r}
+ggplot(p_depth, aes(depth, est2)) + 
+  geom_point(data = d, aes(depth, log(density)),
+             alpha = 0.5) +
+  geom_line(color = "tomato3") +
+  theme(aspect.ratio = 3/4)
+```
+
+## m2
+
+```{r}
+#| echo: true
+#| eval: false
+#| cache: true
+
+m2 <- sdmTMB(
+  formula = list(density ~ depth_sc + depth_sq + temp_sc + quarter_f,
+                 density ~ depth_sc + temp_sc + quarter_f),
+  data = d,
+  mesh = mesh,
+  family = delta_gamma(type = "poisson-link"),
+  time_varying = ~1,
+  time_varying_type = "ar1",
+  spatiotemporal = list("off", "iid"),
+  spatial = "on",
+  time = "year")
+```
+
+::: notes
+change from smooth to squared
+:::
+
+## m2
+
+```{r}
+#| eval: false
+#| echo: true
+
+pred <- predict(m2, newdata = pred_grid |> filter(quarter == 3))
+
+plot_map_fc +
+  geom_raster(data = pred,
+              aes(X*1000, Y*1000, fill = exp(epsilon_st2))) +
+  scale_fill_viridis(name = "Density (kg/km2)", trans = "sqrt") +
+  facet_wrap(~year, ncol = 7) +
+  theme_sleek(base_size = 9) +
+  theme(
+    legend.position.inside = c(0.195, 0.75),
+    legend.direction = "vertical",
+    legend.key.width = unit(0.2, "cm"),
+    legend.key.height = unit(0.3, "cm"),
+    legend.title = element_text(size = 6)) +
+  guides(
+    fill = guide_colorbar(
+    position = "bottom", 
+    title.position = "top",
+    direction = "horizontal",
+    title.hjust = 1, 
+    theme = theme(legend.key.width  = unit(3, "cm")))) + 
+  geom_sf() + 
+  labs(subtitle = "Quarter 3")
+```
+
+```{r}
+#| eval: true
+#| echo: false
+
+m2 <- sdmTMB(
+  formula = list(density ~ depth_sc + depth_sq + temp_sc + quarter_f,
+                 density ~ depth_sc + temp_sc + quarter_f),
+  data = d,
+  mesh = mesh,
+  family = delta_gamma(type = "poisson-link"),
+  time_varying = ~1,
+  time_varying_type = "ar1",
+  spatiotemporal = list("off", "iid"),
+  spatial = "on",
+  time = "year")
+```
+
+## m2
+
+```{r}
+#| eval: true
+#| echo: false
+#| fig.width: 9.5   # Wider plot (default is often 7)
+#| fig.height: 7.5   # Taller plot (default is often 5)
+
+pred <- predict(m2, newdata = pred_grid |> filter(quarter == 3))
+
+plot_map_fc +
+  geom_raster(data = pred,
+              aes(X*1000, Y*1000, fill = exp(epsilon_st2))) +
+  scale_fill_viridis(name = "Density (kg/km2)", trans = "sqrt") +
+  facet_wrap(~year, ncol = 7) +
+  theme_sleek(base_size = 9) +
+  theme(legend.position.inside = c(0.195, 0.75),
+        legend.direction = "vertical",
+        legend.key.width = unit(0.2, "cm"),
+        legend.key.height = unit(0.3, "cm"),
+        legend.title = element_text(size = 6)) +
+  guides(fill = guide_colorbar(
+    position = "bottom", 
+    title.position = "top",
+    direction = "horizontal",
+    title.hjust = 1, 
+    theme = theme(legend.key.width  = unit(3, "cm")))) + 
+  geom_sf() + 
+  labs(subtitle = "Quarter 3")
+```
+
+## m3
+
+```{r}
+#| echo: true
+#| cache: true
+m3 <- sdmTMB(
+  formula = list(density ~ depth_sc + depth_sq + temp_sc + quarter_f,
+                 density ~ depth_sc + temp_sc + quarter_f),
+  data = d,
+  mesh = mesh,
+  family = delta_gamma(type = "poisson-link"),
+  time_varying = ~1,
+  time_varying_type = "ar1",
+  spatiotemporal = list("off", "ar1"),
+  spatial = "on",
+  time = "year")
+```
+
+::: notes
+ar1 st fields
+:::
+
+## m3
+
+```{r}
+print(m3)
+```
+
+## m4
+
+```{r}
+#| echo: true
+#| cache: true
+m4 <- sdmTMB(
+  formula = list(density ~ depth_sc + depth_sq + temp_sc + quarter_f,
+                 density ~ depth_sc + temp_sc + quarter_f),
+  data = d,
+  mesh = mesh,
+  family = delta_gamma(type = "poisson-link"),
+  time_varying = ~1,
+  time_varying_type = "ar1",
+  spatiotemporal = list("off", "ar1"),
+  spatial = "off",
+  spatial_varying = ~ 0 + quarter_f,
+  time = "year")
+```
+
+::: notes
+svc
+:::
+
+## AIC
+
+AIC favors the spatiotemporal model, with different fields and formula for each component
+
+```{r}
+AIC(m0, m1, m2, m3, m4)
+```
+
+## Model fit
+
+Check model fir
+
+```{r}
+res <- simulate(m4, nsim = 400, type = "mle-mvn") |>
+  dharma_residuals(m4, plot = FALSE)
+
+ggplot(res, aes(observed, expected)) +
+  geom_point(color = "grey30", shape = 21) +
+  geom_abline(col = "tomato3", linewidth = 1.2) +
+  theme(aspect.ratio = 1) +
+  labs(x = "Observed", y = "Expected")
+```
+
+## Estimate a biomass index
+
+```{r}
+#| echo: true
+#| cache: true
+
+pred_tmb_q3 <- predict(
+  m4,
+  newdata = pred_grid |> filter(quarter == 3),
+  return_tmb_object = TRUE)
+
+index_q3 <- get_index(pred_tmb_q3, area = 9, bias_correct = TRUE, level = 0.95)
+```
+
+## Estimate a biomass index
+
+```{r}
+#| echo: true
+#| eval: false
+ggplot(index_q3, aes(year, est/1000)) +
+  geom_ribbon(aes(ymin = lwr/1000, ymax = upr/1000), alpha = 0.3, color = NA) +
+  geom_line() +
+  scale_color_brewer(palette = "Set1") + 
+  scale_fill_brewer(palette = "Set1") +
+    labs(subtitle = "Spatiotemporal index", color = "Quarter",
+         fill = "Quarter", x = "Year", y = "Biomass estimate (tonnes)")
+```
+
+## Estimate a biomass index
+
+```{r}
+#| echo: false
+#| eval: true
+ggplot(index_q3, aes(year, est/1000)) +
+  geom_ribbon(aes(ymin = lwr/1000, ymax = upr/1000), alpha = 0.3, color = NA) +
+  geom_line() +
+  scale_color_brewer(palette = "Set1") + 
+  scale_fill_brewer(palette = "Set1") +
+    labs(subtitle = "Spatiotemporal index", color = "Quarter",
+         fill = "Quarter", x = "Year", y = "Biomass estimate (tonnes)")
+```
+
