@@ -1,6 +1,6 @@
 ---
 title: "Example quarto document"
-author: "Agnes Olin"
+author: "Max Lindmark & (Agnes Olin, some help)"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 toc: true
 format: 
