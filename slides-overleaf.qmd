@@ -1,6 +1,6 @@
 ---
 title: Aqua skill-sharing sessions
-subtitle: Overleaf
+subtitle: renv
 from: markdown+emoji
 format: 
   revealjs:
@@ -24,118 +24,214 @@ date: last-modified
 ---
 
 ## 
-![](figures/overleaf.png){height="200"}
+![](figures/renv_logo.png){height="200"}
 
-- Cloud-based LaTeX editor used for writing, editing and publishing scientific documents
+- R package for managing project-specific package libraries
+- Creates isolated, reproducible environments for each project
+- Records package versions and dependencies
 
 ## Why another tool?
 
--   Quick comparison (Word, Overleaf, Google docs, Quarto/Markdown):
-    -   Collaborative writing
-    -   Equations
-    -   GitHub integration / Version control
-    -   Free
-    -   Track changes
-    -   Ease of use
+-   Quick comparison (Base R, renv, packrat, Docker):
+    -   Reproducibility
+    -   Isolation
+    -   Ease of setup
+    -   Maintenance burden
+    -   Speed
+    -   Collaboration
 
 ::: notes
-Before I go ahead and illustrate with some examples, I want to present a very scientific comparison in how common options for writing compare across a few categories
+Before diving into examples, let's see how different approaches to dependency management compare
 :::
 
-## Collaborative writing
+## Reproducibility
 
-| Word                               | Overleaf           | Google docs        | Quarto/Markdown |
-|------------------|------------------|------------------|------------------|
-| ![](figures/cry.jpg){height="200"} | :white_check_mark: | :white_check_mark: | :x:             |
-
-::: notes
-I don't think I need to explain how messy word is when it comes to collaborative writing, and most of this extra burden is put on the lead author. You risk getting multiple versions (and people don't read each others versions). This is why something like a live cloud based editor is often preffered. You can of course have a word document in e.g., sharepoint, but honestly its clunky and buggy, in my opinion. QUARTO/MARKDOWN
-:::
-
-## Equations
-
-| Word               | Overleaf                                    | Google docs                                          | Quarto/Markdown                             |
-|------------------|------------------|-------------------|------------------|
-| :ballot_box_with_check: | ![](figures/satisfaction.jpg){height="200"} | ![](figures/bike-fall.jpg){height="250" width="250"} | ![](figures/satisfaction.jpg){height="200"} |
-
-::: notes
-No ambiguity here when it comes to the equation, because you can check the code that made it.
-
-You can do it in word, but i's much nicer with Latex
-:::
-
-## GitHub integration / Version control
-
-| Word                               | Overleaf           | Google docs        | Quarto/Markdown |
+| Base R                             | renv               | packrat            | Docker             |
 |------------------|------------------|------------------|------------------|
 | ![](figures/cry.jpg){height="200"} | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 ::: notes
-See the collaboration slides. Word typically relies on V1.... V1_initials... V2.... That can work of course...
+Without renv, you rely on global package versions that change over time. "It works on my machine" becomes a real problem.
 :::
 
-## Free
+## Isolation
 
-| Word | Overleaf | Google docs | Quarto/Markdown    |
-|------|----------|-------------|--------------------|
-| :x:  | :x:      | :white_check_mark: | :white_check_mark: |
+| Base R | renv               | packrat            | Docker             |
+|--------|------------------|------------------|------------------|
+| :x:    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 
 ::: notes
-Overleaf unfortuntaly is very limited in the free version. But so is word.
+renv creates project-specific libraries, preventing conflicts between projects requiring different package versions
 :::
 
-## Track changes
+## Ease of setup
 
-| Word               | Overleaf                              | Google docs        | Quarto/Markdown              |
-|-----------------|------------------------------------------|-----------------|----------------------------|
-| :white_check_mark: | :ballot_box_with_check: (with pay version) | :white_check_mark: | :ballot_box_with_check: (via Git) |
+| Base R             | renv               | packrat                 | Docker |
+|------------------|------------------|------------------|--------|
+| :white_check_mark: | :white_check_mark: | :ballot_box_with_check: | :x:    |
 
 ::: notes
-Only with pay version. With Quarto, it really comes down to how familar your team is with git
+renv is just three commands: init(), snapshot(), restore(). Docker requires learning containerization concepts.
 :::
 
-## Ease of use
+## Maintenance burden
 
-| Word               | Overleaf           | Google docs        | Quarto/Markdown |
-|------------------|-------------------|------------------|------------------|
-| :white_check_mark: | :ballot_box_with_check: | :white_check_mark: | :x:             |
+| Base R             | renv                    | packrat | Docker                             |
+|------------------|------------------|--------|------------------|
+| :white_check_mark: | :ballot_box_with_check: | :x:     | ![](figures/cry.jpg){height="200"} |
+
+::: notes
+renv snapshots are lightweight and automatic. packrat is deprecated and had performance issues. Docker images need regular updates.
+:::
+
+## Speed
+
+| Base R             | renv                                        | packrat | Docker                  |
+|------------------|------------------|--------|------------------|
+| :white_check_mark: | ![](figures/satisfaction.jpg){height="200"} | :x:     | :ballot_box_with_check: |
+
+::: notes
+renv uses a global package cache, so packages are only downloaded once and shared across projects
+:::
+
+## Collaboration
+
+| Base R                             | renv               | packrat                 | Docker                  |
+|------------------|------------------|------------------|------------------|
+| ![](figures/cry.jpg){height="200"} | :white_check_mark: | :ballot_box_with_check: | :ballot_box_with_check: |
+
+::: notes
+renv.lock file is small, human-readable, and works perfectly with Git. Everyone gets the exact same environment.
+:::
 
 ## Summary
 
-| Criteria                             | Word               | Overleaf           | Google docs        | Quarto/Markdown |
-|--------------------------------------|---------|---------|---------|---------|
-| Collaborative writing                | :x:                     | :white_check_mark:      | :white_check_mark: | :x:                     |
-| Equations                            | :ballot_box_with_check: | :white_check_mark:      | :x:                | :white_check_mark:      |
-| GitHub integration / Version control | :x:                     | :white_check_mark:      | :x:                | :white_check_mark:      |
-| Free                                 | :x:                     | :x:                     | :white_check_mark: | :white_check_mark:      |
-| Track changes                        | :white_check_mark:      | :ballot_box_with_check: | :white_check_mark: | :ballot_box_with_check: |
-| Ease of use                          | :white_check_mark:      | :ballot_box_with_check: | :white_check_mark: | :x:                     |
+| Criteria             | Base R             | renv                    | packrat                 | Docker                  |
+|----------------------|------------------|------------------|------------------|------------------|
+| Reproducibility      | :x:                | :white_check_mark:      | :white_check_mark:      | :white_check_mark:      |
+| Isolation            | :x:                | :white_check_mark:      | :white_check_mark:      | :white_check_mark:      |
+| Ease of setup        | :white_check_mark: | :white_check_mark:      | :ballot_box_with_check: | :x:                     |
+| Maintenance burden   | :white_check_mark: | :ballot_box_with_check: | :x:                     | :x:                     |
+| Speed                | :white_check_mark: | :white_check_mark:      | :x:                     | :ballot_box_with_check: |
+| Collaboration        | :x:                | :white_check_mark:      | :ballot_box_with_check: | :ballot_box_with_check: |
 
 ::: notes
-Only one X for over
+Only one red X for renv - it excels at what it does
 :::
 
-## 
+## Basic workflow
+
+```r
+# Initialize renv in your project
+renv::init()
+
+# Install packages as usual
+install.packages("ggplot2")
+
+# Save the state of your project
+renv::snapshot()
+
+# Restore packages (e.g., on another machine)
+renv::restore()
+```
+
+That's it! Three simple commands for reproducible projects.
+
+## What renv creates
+
+```
+📁 your-project/
+   ├── 📄 renv.lock      # Package versions (commit to Git)
+   ├── 📁 renv/          # renv infrastructure (ignore in Git)
+   └── 📄 .Rprofile      # Auto-activates renv
+```
+
+- **renv.lock:** JSON file listing all packages and their versions
+- **renv/:** Project library and settings
+- **.Rprofile:** Activates renv when you open the project
+
+## Collaboration with renv
+
+::: {.columns}
+::: {.column width="50%"}
+### 👤 Person A
+
+1. Initialize project with `renv::init()`
+2. Install packages, do work
+3. Run `renv::snapshot()`
+4. Commit `renv.lock` to Git
+:::
+
+::: {.column width="50%"}
+### 👤 Person B
+
+1. Clone the repository
+2. Open project in RStudio
+3. Run `renv::restore()`
+4. Get exact same environment! ✨
+:::
+:::
+
+<br>
+
+💡 **No more "it works on my machine" problems!**
+
+## Best practices
+
+- ✅ **Do commit renv.lock to Git** - This is your record of package versions
+- ✅ **Do run renv::snapshot() regularly** - After installing or updating packages
+- ✅ **Do add renv/ to .gitignore** - The library folder doesn't need to be in Git
+- ❌ **Don't install packages globally** - Use install.packages() within the project
+- ❌ **Don't forget to restore** - Run renv::restore() when pulling updates
+
+## Common issues & solutions
+
+- 🔴 **"Package not found"**
+  - Solution: Run `renv::restore()` to install missing packages
+
+- 🔴 **"Out of sync"**
+  - Solution: Use `renv::status()` to check, then snapshot or restore
+
+- 🔴 **"Slow installation"**
+  - Solution: renv uses a cache, but first install takes time. Consider using binary packages
+
+- 🔴 **"Package from GitHub not working"**
+  - Solution: Ensure you specify the remote in renv.lock or use `renv::install("user/repo")`
+
+## When to use renv?
+
+- ✅ **Collaborative projects** - Everyone needs the same package versions
+- ✅ **Long-term projects** - Your future self will thank you
+- ✅ **Publication/Analysis code** - Make your research reproducible
+- ✅ **Teaching materials** - Students get a consistent environment
+- ⚠️ **Quick exploratory analysis** - Maybe overkill, but doesn't hurt
+
+## Resources
+
+- 📚 **Official documentation:** [rstudio.github.io/renv/](https://rstudio.github.io/renv/)
+- 🎓 **Introduction article:** [Getting started with renv](https://rstudio.github.io/renv/articles/renv.html)
+- 💬 **RStudio Community:** [community.rstudio.com](https://community.rstudio.com/)
+- 📦 **CRAN page:** [cran.r-project.org/package=renv](https://cran.r-project.org/package=renv)
+
+## Questions?
+
+![](figures/renv_icon.png){height="300"}
+
+**Thank you!**
+
+Start using renv today for reproducible R projects
+
 ::: notes
-- Walkthrough layot
-  - My projects
-  - New project (with template)
-  - Left hand side: files, middle: latex cod, right: rendered pdf
-  - Download file, download project
-  - Inline equation, new equation
-  - italic, bold
+- Walkthrough workflow
+  - renv::init() in existing project
+  - Install a package
+  - renv::snapshot()
+  - Show renv.lock file
+  - Show .Rprofile
+  - Demonstrate renv::status()
   
-- Make new template project
-- Sharing (see also download pdf and open in word)
-- Commenting
-- Download 
-
-- My workflow
-- Template
-- Figures
-- Citations with Zotero 
-- Show example
-- Invite someone?
+- Collaboration demo
+- Show global cache location
+- Demonstrate restore on fresh project
+- GitHub integration example
 :::
-
-
